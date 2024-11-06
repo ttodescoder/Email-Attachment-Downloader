@@ -1,0 +1,54 @@
+import win32com.client
+import os
+import datetime
+
+def leitor_de_email(data_email, outputRede, rule, subfolder, fileformat):
+    """
+    Download email attachments from a specified subfolder in Outlook, based on a rule in the subject,
+    and save the attachments with the specified file format to a given folder on the network.
+
+    Args:
+        data_email (str): The date from which emails should be considered (format: 'YYYY-MM-DD').
+        outputRede (str): The network directory path where attachments will be saved.
+        rule (str): A string to match in the subject of the email.
+        subfolder (str): The name of the subfolder in the Outlook inbox.
+        fileformat (str): The file extension of attachments to be downloaded (e.g., '.xls').
+    """
+
+    # Ensure the output directory exists
+    if not os.path.exists(outputRede):
+        print(f"Directory '{outputRede}' does not exist. Creating it now...")
+        os.makedirs(outputRede)
+
+    # Initialize Outlook application and access the MAPI namespace
+    outlook = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
+    
+    try:
+        # Access the Inbox folder
+        Pasta = outlook.GetDefaultFolder(6)  # 6 corresponds to Inbox in Outlook
+
+        try:
+            # Access the specified subfolder
+            Subpasta = Pasta.Folders(subfolder)
+            print(f"Searching in subfolder: {subfolder}")
+
+            # Filter emails by date (sent on or after the specified date)
+            date_filter = f"[SentOn] >= '{data_email}'"
+            for Email in Subpasta.Items.Restrict(date_filter):
+                # Check if the rule is present in the subject
+                Subject = Email.Subject
+                if rule in Subject:
+                    print(f"Found email: {Subject}")
+
+                    # Process attachments
+                    for Anexo in Email.Attachments:
+                        if fileformat in Anexo.FileName:
+                            attachment_path = os.path.join(outputRede, Anexo.FileName)
+                            Anexo.SaveASFile(attachment_path)
+                            print(f'Attachment saved to: {attachment_path}')
+
+        except Exception as e:
+            print(f"Error accessing subfolder '{subfolder}': {e}")
+    
+    except Exception as e:
+        print(f"Error accessing the inbox: {e}")
